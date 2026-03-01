@@ -114,17 +114,25 @@ fn main() -> Result<()> {
 
     sys::fs::ensure_dir_exists(&mnt_base)?;
 
-    MountController::new(config, &mnt_base)
-        .init_storage(&mnt_base, &img_path)
-        .context("Failed to initialize storage")?
-        .scan_and_sync()
-        .context("Failed to scan and sync modules")?
-        .generate_plan()
-        .context("Failed to generate mount plan")?
-        .execute()
-        .context("Failed to execute mount plan")?
-        .finalize()
-        .context("Failed to finalize boot sequence")?;
+    let daemon_result = (|| -> Result<()> {
+        MountController::new(config, &mnt_base)
+            .init_storage(&mnt_base, &img_path)
+            .context("Failed to initialize storage")?
+            .scan_and_sync()
+            .context("Failed to scan and sync modules")?
+            .generate_plan()
+            .context("Failed to generate mount plan")?
+            .execute()
+            .context("Failed to execute mount plan")?
+            .finalize()
+            .context("Failed to finalize boot sequence")?;
+        Ok(())
+    })();
+
+    if let Err(e) = daemon_result {
+        core::inventory::model::update_crash_description(&e.to_string());
+        return Err(e);
+    }
 
     Ok(())
 }
