@@ -1,4 +1,22 @@
-## v3.1.4
+## v3.1.5
+
+Changes since v3.1.4:
+* fix(core): expose full anyhow error chain and sanitize newlines for module.prop
+* feat(core): catch daemon startup errors and display crash reason in module description
+* feat(i18n): add step to delete old translation branch in workflow
+* chore(deps-dev): bump globals from 17.3.0 to 17.4.0 in /webui in the crates group (#234)
+* [skip ci]fix: update image source and correct binary name in README files
+* chore(deps): bump actions/upload-artifact in the crates group
+* New Crowdin translations by GitHub Action
+* refactor: remove unused import of Show from ConfigTab component
+* refactor: remove umount coexistence option and optimize ModulesTab performance
+* Refactor store usage to uiStore and moduleStore across components
+* feat: refactor application structure and implement new store management for configuration, modules, and system state
+* fix(webui): resolve swipe stuck issue caused by requestAnimationFrame race condition
+* feat: add Vietnamese translation for Hybrid Mount (#229)
+* fix: fix error handling when scan modules (#228)
+* feat(perf): implement UI performance optimizations
+* chore(release): sync version v3.1.4 [skip ci]## v3.1.4
 
 Changes since v3.1.3:
 * fix(planner): correct module partition directory detection logic
