@@ -1,3 +1,6 @@
+// Copyright 2026 Hybrid Mount Developers
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 use const_format::concatcp;
 
 pub const ADB_DIR: &str = "/data/adb";
