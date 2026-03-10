@@ -1,5 +1,5 @@
 name: Bug Report / 错误报告
-description: Create a report to help us improve Meta-Hybrid Mount / 创建报告以帮助我们改进 Meta-Hybrid Mount
+description: Create a report to help us improve Hybrid Mount / 创建报告以帮助我们改进 Hybrid Mount
 title: "[Bug]: "
 labels: ["bug"]
 body:
@@ -8,7 +8,6 @@ body:
       value: |
         Please ensure you have checked existing issues before reporting.
         请在报告之前确保您已检查过现有的 Issue。
-
   - type: input
     id: device
     attributes:
@@ -17,7 +16,6 @@ body:
       placeholder: Xiaomi 13, Android 14 (HyperOS)
     validations:
       required: true
-
   - type: input
     id: device_codename
     attributes:
@@ -26,7 +24,6 @@ body:
       placeholder: lmi
     validations:
       required: false
-
   - type: input
     id: android_build
     attributes:
@@ -35,7 +32,6 @@ body:
       placeholder: google/sailfish/sailfish:11/RP1A.201005.006/...
     validations:
       required: false
-
   - type: input
     id: kernel
     attributes:
@@ -44,7 +40,25 @@ body:
       placeholder: 5.15.100-android14-11-g123456...
     validations:
       required: true
-
+  - type: dropdown
+    id: kernel_category
+    attributes:
+      label: Kernel Version Category / 内核版本分类
+      options:
+        - "kernel version 5.10-"
+        - "kernel version 5.10+"
+    validations:
+      required: true
+  - type: dropdown
+    id: hook_type
+    attributes:
+      label: Hook Type / Hook 类型
+      options:
+        - "susfs"
+        - "tracepoint"
+        - "manual"
+    validations:
+      required: true
   - type: input
     id: daemon_version
     attributes:
@@ -53,7 +67,6 @@ body:
       placeholder: v1.0.2-r1
     validations:
       required: false
-
   - type: dropdown
     id: ksu_type
     attributes:
@@ -65,7 +78,6 @@ body:
         - "Other / 其它"
     validations:
       required: true
-
   - type: input
     id: ksu_manager_version
     attributes:
@@ -74,7 +86,6 @@ body:
       placeholder: KernelSU Manager v2.3.4
     validations:
       required: false
-
   - type: dropdown
     id: susfs
     attributes:
@@ -86,7 +97,6 @@ body:
         - "Unknown / 不清楚"
     validations:
       required: true
-
   - type: input
     id: module_version
     attributes:
@@ -95,7 +105,6 @@ body:
       placeholder: v1.0.2-r1
     validations:
       required: true
-
   - type: textarea
     id: other_modules
     attributes:
@@ -106,7 +115,6 @@ body:
         - module-b vA.B
     validations:
       required: false
-
   - type: dropdown
     id: can_reproduce
     attributes:
@@ -118,7 +126,6 @@ body:
         - "Unknown / 不清楚"
     validations:
       required: true
-
   - type: dropdown
     id: severity
     attributes:
@@ -130,7 +137,6 @@ body:
         - "Low (cosmetic / info) / 低（外观/信息）"
     validations:
       required: true
-
   - type: textarea
     id: actual_behavior
     attributes:
@@ -141,7 +147,6 @@ body:
         安装模块 X 后系统进入无限重启...
     validations:
       required: true
-
   - type: textarea
     id: expected_behavior
     attributes:
@@ -152,7 +157,6 @@ body:
         模块应当在不冲突的情况下挂载 /data...
     validations:
       required: true
-
   - type: textarea
     id: reproduce_steps
     attributes:
@@ -164,7 +168,6 @@ body:
         3. Observe bootloop
     validations:
       required: true
-
   - type: textarea
     id: extra_info
     attributes:
@@ -176,7 +179,6 @@ body:
         - Recovery: TWRP 3.7.0
     validations:
       required: false
-
   - type: markdown
     attributes:
       value: |
@@ -198,7 +200,6 @@ body:
         Privacy note / 隐私提示:
         - Please review logs for personal data before posting. Remove device-specific keys or tokens.
         - 发布日志前请审查并移除敏感数据（如密钥、账号信息等）。
-
   - type: textarea
     id: attachments
     attributes:
