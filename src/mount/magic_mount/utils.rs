@@ -138,12 +138,22 @@ pub fn collect_module_files(
             continue;
         }
         let string = fs::read_to_string(prop)?;
+
+        let mut valid_id = true;
         for line in string.lines() {
             if line.starts_with("id")
                 && let Some((_, value)) = line.split_once('=')
             {
-                validate_module_id(value)?;
+                if validate_module_id(value).is_err() {
+                    valid_id = false;
+                    break;
+                }
             }
+        }
+
+        if !valid_id {
+            log::debug!("skipped module {id}, invalid ID format");
+            continue;
         }
 
         if entry.path().join(DISABLE_FILE_NAME).exists()

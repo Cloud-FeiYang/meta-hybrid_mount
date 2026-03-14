@@ -194,17 +194,36 @@ fn should_sync(src: &Path, dst: &Path) -> bool {
     }
 
     let src_prop = src.join("module.prop");
-
     let dst_prop = dst.join("module.prop");
 
     if !src_prop.exists() || !dst_prop.exists() {
         return true;
     }
 
-    match (fs::read(&src_prop), fs::read(&dst_prop)) {
-        (Ok(s), Ok(d)) => s != d,
-        _ => true,
+    if let (Ok(s), Ok(d)) = (fs::read(&src_prop), fs::read(&dst_prop)) {
+        if s != d {
+            return true;
+        }
+    } else {
+        return true;
     }
+
+    let src_post_fs = src.join("post-fs-data.sh");
+    let dst_post_fs = dst.join("post-fs-data.sh");
+
+    if src_post_fs.exists() && dst_post_fs.exists() {
+        if let (Ok(s_meta), Ok(d_meta)) = (fs::metadata(&src_post_fs), fs::metadata(&dst_post_fs)) {
+            if let (Ok(s_time), Ok(d_time)) = (s_meta.modified(), d_meta.modified()) {
+                if s_time > d_time {
+                    return true;
+                }
+            }
+        }
+    } else if src_post_fs.exists() != dst_post_fs.exists() {
+        return true;
+    }
+
+    false
 }
 
 fn has_files_recursive(path: &Path) -> bool {

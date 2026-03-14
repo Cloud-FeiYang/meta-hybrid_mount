@@ -210,14 +210,18 @@ pub fn mount_overlay(
     let mounts = Process::myself()?
         .mountinfo()
         .with_context(|| "get mountinfo")?;
+
+    let root_path = Path::new(root);
     let mut mount_seq = mounts
         .0
         .iter()
         .filter(|m| {
-            m.mount_point.starts_with(root) && !Path::new(&root).starts_with(&m.mount_point)
+            let mp = Path::new(&m.mount_point);
+            mp.starts_with(root_path) && mp != root_path
         })
         .map(|m| m.mount_point.to_str())
         .collect::<Vec<_>>();
+
     mount_seq.sort();
     mount_seq.dedup();
 

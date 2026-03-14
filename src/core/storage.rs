@@ -268,6 +268,8 @@ where
     let result = Command::new("mkfs.ext4")
         .arg("-b")
         .arg("1024")
+        .arg("-i")
+        .arg("4096")
         .arg(img_path)
         .stdout(std::process::Stdio::piped())
         .output()?;
