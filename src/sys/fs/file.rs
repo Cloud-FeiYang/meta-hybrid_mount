@@ -35,6 +35,7 @@ pub fn atomic_write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, content: C) -> Resu
             .create_new(true)
             .open(&temp_file)?;
         file.write_all(content.as_ref())?;
+        file.sync_all()?;
     }
 
     if let Err(_e) = fs::rename(&temp_file, path) {

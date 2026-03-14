@@ -54,10 +54,10 @@ pub fn repair_image(image_path: &Path) -> Result<()> {
         .status()
         .context("Failed to execute e2fsck")?;
 
-    if let Some(code) = status.code()
-        && code > 2
-    {
-        bail!("e2fsck failed with exit code: {}", code);
+    match status.code() {
+        Some(code) if code > 2 => bail!("e2fsck failed with exit code: {}", code),
+        None => bail!("e2fsck terminated by signal"),
+        _ => {}
     }
     Ok(())
 }

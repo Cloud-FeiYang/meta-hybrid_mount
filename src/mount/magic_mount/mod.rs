@@ -1,7 +1,5 @@
 // Copyright 2026 https://github.com/Tools-cx-app/meta-magic_mount
 
-mod utils;
-
 use std::{
     collections::HashSet,
     fs,
@@ -39,7 +37,7 @@ struct MagicMount {
 
 impl MagicMount {
     fn new<P>(
-        node: &Node,
+        node: Node,
         path: P,
         work_dir_path: P,
         has_tmpfs: bool,
@@ -49,24 +47,21 @@ impl MagicMount {
         P: AsRef<Path>,
     {
         Self {
-            node: node.clone(),
-            path: path.as_ref().join(node.name.clone()),
-            work_dir_path: work_dir_path.as_ref().join(node.name.clone()),
+            path: path.as_ref().join(&node.name),
+            work_dir_path: work_dir_path.as_ref().join(&node.name),
+            node,
             has_tmpfs,
             #[cfg(any(target_os = "linux", target_os = "android"))]
             umount,
         }
     }
 
-    fn do_mount(&mut self) -> Result<()> {
+    fn do_mount(mut self) -> Result<()> {
         match self.node.file_type {
             NodeFileType::Symlink => self.symlink(),
             NodeFileType::RegularFile => self.regular_file(),
             NodeFileType::Directory => self.directory(),
-            NodeFileType::Whiteout => {
-                log::debug!("file {} is removed", self.path.display());
-                Ok(())
-            }
+            NodeFileType::Whiteout => Ok(()),
         }
     }
 }
@@ -74,11 +69,6 @@ impl MagicMount {
 impl MagicMount {
     fn symlink(&self) -> Result<()> {
         if let Some(module_path) = &self.node.module_path {
-            log::debug!(
-                "create module symlink {} -> {}",
-                module_path.display(),
-                self.work_dir_path.display()
-            );
             clone_symlink(module_path, &self.work_dir_path).with_context(|| {
                 format!(
                     "create module symlink {} -> {}",
@@ -106,13 +96,7 @@ impl MagicMount {
             bail!("cannot mount root file {}!", self.path.display());
         }
 
-        let module_path = &self.node.module_path.clone().unwrap();
-
-        log::debug!(
-            "mount module file {} -> {}",
-            module_path.display(),
-            self.work_dir_path.display()
-        );
+        let module_path = self.node.module_path.as_ref().unwrap();
 
         mount_bind(module_path, target).with_context(|| {
             #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -126,22 +110,18 @@ impl MagicMount {
             )
         })?;
 
-        if let Err(e) = mount_remount(target, MountFlags::RDONLY | MountFlags::BIND, "") {
-            log::warn!("make file {} ro: {e:#?}", target.display());
-        }
+        let _ = mount_remount(target, MountFlags::RDONLY | MountFlags::BIND, "");
 
         let mounted = MOUNTED_FILES.load(std::sync::atomic::Ordering::Relaxed) + 1;
         MOUNTED_FILES.store(mounted, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
 
-    #[allow(clippy::too_many_lines)]
     fn directory(&mut self) -> Result<()> {
         let mut tmpfs = !self.has_tmpfs && self.node.replace && self.node.module_path.is_some();
 
         if !self.has_tmpfs && !tmpfs {
-            for it in &mut self.node.children {
-                let (name, node) = it;
+            for (name, node) in &mut self.node.children {
                 let real_path = self.path.join(name);
                 let need = match node.file_type {
                     NodeFileType::Symlink => true,
@@ -157,10 +137,6 @@ impl MagicMount {
                 };
                 if need {
                     if self.node.module_path.is_none() {
-                        log::error!(
-                            "cannot create tmpfs on {}, ignore: {name}",
-                            self.path.display()
-                        );
                         node.skip = true;
                         continue;
                     }
@@ -189,18 +165,15 @@ impl MagicMount {
             self.mount_path(has_tmpfs)?;
         }
 
-        if self.node.replace {
-            if self.node.module_path.is_none() {
-                bail!(
-                    "dir {} is declared as replaced but it is root!",
-                    self.path.display()
-                );
-            }
-
-            log::debug!("dir {} is replaced", self.path.display());
+        if self.node.replace && self.node.module_path.is_none() {
+            bail!(
+                "dir {} is declared as replaced but it is root!",
+                self.path.display()
+            );
         }
 
-        for (name, node) in &self.node.children {
+        let remaining_children = std::mem::take(&mut self.node.children);
+        for (name, node) in remaining_children {
             if node.skip {
                 continue;
             }
@@ -221,25 +194,15 @@ impl MagicMount {
                 if has_tmpfs {
                     return Err(e);
                 }
-
-                log::error!("mount child {}/{name} failed: {e:#?}", self.path.display());
             }
         }
 
         if tmpfs {
-            log::debug!(
-                "moving tmpfs {} -> {}",
-                self.work_dir_path.display(),
-                self.path.display()
-            );
-
-            if let Err(e) = mount_remount(
+            let _ = mount_remount(
                 &self.work_dir_path,
                 MountFlags::RDONLY | MountFlags::BIND,
                 "",
-            ) {
-                log::warn!("make dir {} ro: {e:#?}", self.path.display());
-            }
+            );
             mount_move(&self.work_dir_path, &self.path).with_context(|| {
                 format!(
                     "moving tmpfs {} -> {}",
@@ -247,9 +210,7 @@ impl MagicMount {
                     self.path.display()
                 )
             })?;
-            if let Err(e) = mount_change(&self.path, MountPropagationFlags::PRIVATE) {
-                log::warn!("make dir {} private: {e:#?}", self.path.display());
-            }
+            let _ = mount_change(&self.path, MountPropagationFlags::PRIVATE);
 
             #[cfg(any(target_os = "linux", target_os = "android"))]
             if self.umount {
@@ -271,7 +232,7 @@ impl MagicMount {
                     }
 
                     Self::new(
-                        &node,
+                        node,
                         &self.path,
                         &self.work_dir_path,
                         has_tmpfs,
@@ -292,7 +253,6 @@ impl MagicMount {
                 if has_tmpfs {
                     return Err(e);
                 }
-                log::error!("mount child {}/{name} failed: {e:#?}", self.path.display());
             }
         }
 
@@ -313,7 +273,6 @@ where
     P: AsRef<Path>,
 {
     if let Some(root) = collect_module_files(module_dir, extra_partitions, need_id)? {
-        log::debug!("collected: {root:?}");
         let tmp_root = tmp_path.as_ref();
         let tmp_dir = tmp_root.join("workdir");
         ensure_dir_exists(&tmp_dir)?;
@@ -322,7 +281,7 @@ where
         mount_change(&tmp_dir, MountPropagationFlags::PRIVATE).context("make tmp private")?;
 
         let ret = MagicMount::new(
-            &root,
+            root,
             Path::new("/"),
             tmp_dir.as_path(),
             false,
@@ -331,18 +290,11 @@ where
         )
         .do_mount();
 
-        if let Err(e) = unmount(&tmp_dir, UnmountFlags::DETACH) {
-            log::error!("failed to unmount tmp {e}");
-        }
-
+        let _ = unmount(&tmp_dir, UnmountFlags::DETACH);
         fs::remove_dir(tmp_dir).ok();
 
-        let mounted_symbols = MOUNTED_SYMBOLS_FILES.load(std::sync::atomic::Ordering::Relaxed);
-        let mounted_files = MOUNTED_FILES.load(std::sync::atomic::Ordering::Relaxed);
-        log::info!("mounted files: {mounted_files}, mounted symlinks: {mounted_symbols}");
         ret
     } else {
-        log::info!("no modules to mount, skipping!");
         Ok(())
     }
 }
