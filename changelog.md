@@ -1,4 +1,43 @@
-## v3.1.5
+## v3.1.6
+
+Changes since v3.1.5:
+* chore: fmt
+* adj: Adjusting loop logic
+* chore: make cargo clippy
+* fix: Fixing layout errors
+* chore: fmt
+* feat: removed trait MountDriver in backend
+* fix: fix glob rules again
+* fix: make clippy happy
+* fix: restore missing utils module and logging statements
+* perf: eliminate O(N^2) tree cloning in magic mount and fix I/O safety
+* fix: resolve critical mount bugs, ext4 inode exhaustion, and strict sync limits
+* fix: fix error glob rules
+* improve: Delete all imgs before mounting img.
+* chore(deps): bump quinn-proto from 0.11.13 to 0.11.14 in /tools/notify in the cargo group across 1 directory (#249)
+* feat(issue): add kernel version & hook type fields with auto-labeling
+* chore: update license headers [skip ci]
+* ci: delete unused workflow i18n
+* ci: fix webui submodule path
+* chore: add hybrid-mount-webui-md3 as webui submodule
+* chore: remove webui folder for submodule migration
+* chore(tools): update notify binary [skip ci]
+* chore(deps): update dependencies in Cargo.lock
+* chore(deps-dev): bump eslint in /webui in the crates group
+* chore(deps): bump the crates group with 2 updates
+* fix: make clippy happy
+* refactor: remove random kworker camouflage feature
+* feat: refactor logger system
+* feat: add const_format dependency and refactor path constants
+* feat: normalize module directory layout during sync
+* chore(logging):logger tag to "Hybrid_Logger"
+* ci: Simplify commit and push steps in workflow (#242)
+* chore(tools): update notify binary [skip ci]
+* chore(deps): bump aws-lc-sys
+* chore(tools): update notify binary [skip ci]
+* chore(deps): bump the crates group in /tools/notify with 2 updates
+* chore(deps): bump zip from 8.1.0 to 8.2.0 in the crates group
+* chore(release): sync version v3.1.5 [skip ci]## v3.1.5
 
 Changes since v3.1.4:
 * fix(core): expose full anyhow error chain and sanitize newlines for module.prop
