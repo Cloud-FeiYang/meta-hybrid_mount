@@ -3,17 +3,13 @@
 
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
 };
 
 use anyhow::{Context, Result, bail, ensure};
 use jwalk::WalkDir;
-use loopdev::LoopControl;
-use rustix::mount::{
-    MountFlags, MountPropagationFlags, UnmountFlags, mount, mount_change, unmount as umount,
-};
+use rustix::mount::{MountPropagationFlags, UnmountFlags, mount_change, unmount as umount};
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use crate::mount::umount_mgr::send_umountable;
@@ -46,42 +42,6 @@ impl StorageHandle {
 
     pub fn mode(&self) -> &str {
         self.backend.mode()
-    }
-}
-
-pub struct ErofsBackend {
-    pub mount_point: PathBuf,
-    pub mode: String,
-    pub backing_image: PathBuf,
-    pub final_target: PathBuf,
-}
-
-impl StorageBackend for ErofsBackend {
-    fn commit(&mut self, disable_umount: bool) -> Result<()> {
-        if self.mode == "erofs_staging" {
-            let staged_has_entries = directory_has_entries(&self.mount_point)?;
-            create_erofs_image(&self.mount_point, &self.backing_image)?;
-            umount(&self.mount_point, UnmountFlags::DETACH)?;
-            let _ = fs::remove_dir(&self.mount_point);
-            ensure_dir_exists(&self.final_target)?;
-            mount_erofs_image(&self.backing_image, &self.final_target, staged_has_entries)?;
-            mount_change(&self.final_target, MountPropagationFlags::PRIVATE)?;
-            #[cfg(any(target_os = "linux", target_os = "android"))]
-            if !disable_umount {
-                let _ = send_umountable(&self.final_target);
-            }
-            self.mount_point = self.final_target.clone();
-            self.mode = "erofs".to_string();
-        }
-        Ok(())
-    }
-
-    fn mount_point(&self) -> &Path {
-        &self.mount_point
-    }
-
-    fn mode(&self) -> &str {
-        &self.mode
     }
 }
 
@@ -139,10 +99,6 @@ fn calculate_total_size(path: &Path) -> Result<u64> {
     Ok(total_size)
 }
 
-fn directory_has_entries(path: &Path) -> Result<bool> {
-    Ok(fs::read_dir(path)?.next().is_some())
-}
-
 fn check_image<P>(img: P) -> Result<()>
 where
     P: AsRef<Path>,
@@ -161,7 +117,6 @@ pub fn setup(
     mnt_base: &Path,
     moduledir: &Path,
     force_ext4: bool,
-    use_erofs: bool,
     mount_source: &str,
     disable_umount: bool,
 ) -> Result<StorageHandle> {
@@ -190,35 +145,6 @@ pub fn setup(
         log::trace!("trying make {} is private", path.display());
         let _ = mount_change(path, MountPropagationFlags::PRIVATE);
     };
-
-    if use_erofs && is_erofs_supported() {
-        log::trace!("erofs was supported, will use erofs mode");
-        let erofs_path = img_path.with_extension("erofs");
-        let staging_dir = Path::new(defs::RUN_DIR).join("erofs_staging");
-
-        if is_mounted(&staging_dir) {
-            log::trace!("{} was mounted, umounting", staging_dir.display());
-            let _ = umount(&staging_dir, UnmountFlags::DETACH);
-        }
-        if staging_dir.exists() {
-            log::trace!("{} was exists, removeing", staging_dir.display());
-            let _ = fs::remove_dir_all(&staging_dir);
-        }
-        ensure_dir_exists(&staging_dir)?;
-
-        crate::sys::mount::mount_tmpfs(&staging_dir, mount_source)?;
-        make_private(&staging_dir);
-        try_hide(&staging_dir);
-
-        return Ok(StorageHandle {
-            backend: Box::new(ErofsBackend {
-                mount_point: staging_dir,
-                mode: "erofs_staging".to_string(),
-                backing_image: erofs_path,
-                final_target: mnt_base.to_path_buf(),
-            }),
-        });
-    }
 
     if !force_ext4 && try_setup_tmpfs(mnt_base, mount_source)? {
         log::trace!("tmpfs mode was supported, and no use erofs mode");
@@ -305,67 +231,4 @@ where
         mount_point: target.to_path_buf(),
         mode: "ext4".to_string(),
     })
-}
-
-fn is_erofs_supported() -> bool {
-    fs::read_to_string("/proc/filesystems")
-        .map(|content| content.contains("erofs"))
-        .unwrap_or(false)
-}
-
-fn create_erofs_image(src_dir: &Path, image_path: &Path) -> Result<()> {
-    let mkfs_bin = Path::new(defs::MKFS_EROFS_PATH);
-    let cmd_name = if mkfs_bin.exists() {
-        mkfs_bin.as_os_str()
-    } else {
-        std::ffi::OsStr::new("mkfs.erofs")
-    };
-
-    let output = Command::new(cmd_name)
-        .arg("-z")
-        .arg("lz4hc")
-        .arg("-x")
-        .arg("256")
-        .arg(image_path)
-        .arg(src_dir)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()?;
-
-    if !output.status.success() {
-        bail!("Failed to create EROFS image");
-    }
-
-    let _ = fs::set_permissions(image_path, fs::Permissions::from_mode(0o644));
-    let _ = lsetfilecon(image_path, "u:object_r:ksu_file:s0");
-    Ok(())
-}
-
-fn mount_erofs_image(image_path: &Path, target: &Path, expected_non_empty: bool) -> Result<()> {
-    ensure_dir_exists(target)?;
-    let _ = lsetfilecon(image_path, "u:object_r:ksu_file:s0");
-
-    let lc = LoopControl::open()?;
-    let ld = lc.next_free()?;
-
-    ld.with()
-        .read_only(true)
-        .autoclear(true)
-        .attach(image_path)?;
-
-    let device_path = ld.path().context("Could not get loop device path")?;
-
-    mount(
-        &device_path,
-        target,
-        "erofs",
-        MountFlags::NOATIME | MountFlags::NODEV | MountFlags::RDONLY,
-        Some(c""),
-    )?;
-
-    if expected_non_empty && !directory_has_entries(target)? {
-        bail!("EROFS mount succeeded but staged module contents disappeared after remount");
-    }
-
-    Ok(())
 }

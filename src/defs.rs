@@ -13,7 +13,6 @@ pub const STATE_FILE: &str = concatcp!(RUN_DIR, "daemon_state.json");
 pub const SYSTEM_RW_DIR: &str = concatcp!(HYBRID_MOUNT_DIR, "/rw");
 pub const CONFIG_FILE: &str = concatcp!(HYBRID_MOUNT_DIR, "/config.toml");
 pub const MODULE_PROP_FILE: &str = concatcp!(MODULES_DIR, "/hybrid_mount/module.prop");
-pub const MKFS_EROFS_PATH: &str = concatcp!(ADB_DIR, "/metamodule/tools/mkfs.erofs");
 
 pub const DISABLE_FILE_NAME: &str = "disable";
 pub const REMOVE_FILE_NAME: &str = "remove";

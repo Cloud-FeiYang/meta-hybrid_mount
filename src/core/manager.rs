@@ -66,10 +66,6 @@ impl MountController<Init> {
                 self.config.overlay_mode,
                 crate::conf::config::OverlayMode::Ext4
             ),
-            matches!(
-                self.config.overlay_mode,
-                crate::conf::config::OverlayMode::Erofs
-            ),
             &self.config.mountsource,
             self.config.disable_umount,
         )?;
@@ -87,11 +83,6 @@ impl MountController<StorageReady> {
         let modules = inventory::scan(&self.config.moduledir, &self.config)?;
 
         sync::perform_sync(&modules, self.state.handle.mount_point())?;
-
-        if self.state.handle.mode() == "erofs_staging" {
-            let magic_ws = self.state.handle.mount_point().join("magic_workspace");
-            std::fs::create_dir_all(&magic_ws)?;
-        }
 
         self.state.handle.commit(self.config.disable_umount)?;
 
