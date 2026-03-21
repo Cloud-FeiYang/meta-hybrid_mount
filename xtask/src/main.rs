@@ -288,7 +288,7 @@ fn compile_core(release: bool, arch: Arch) -> Result<()> {
     cmd.args([
         "ndk",
         "--platform",
-        "31",
+        "26",
         "-t",
         arch.target(),
         "build",
