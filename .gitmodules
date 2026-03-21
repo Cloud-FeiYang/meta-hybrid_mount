@@ -1,3 +1,4 @@
 [submodule "webui"]
 	path = webui
+	branch = main
 	url = https://github.com/Hybrid-Mount/hybrid-mount-webui-md3.git
