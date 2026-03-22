@@ -341,13 +341,6 @@ where
             "mounted files: {mounted_files}, mounted symlinks: {mounted_symbols}, ignored files: {ignored_files}"
         );
 
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        if let Err(e) =
-            crate::utils::update_desc(mounted_files, mounted_symbols, ignored_files, umount)
-        {
-            log::debug!("failed to update desc: {e}");
-        }
-
         ret
     } else {
         log::info!("no modules to mount, skipping!");
