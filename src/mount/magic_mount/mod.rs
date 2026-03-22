@@ -26,6 +26,7 @@ use crate::{
 };
 
 static MOUNTED_FILES: AtomicU32 = AtomicU32::new(0);
+static IGNORED_FILES: AtomicU32 = AtomicU32::new(0);
 static MOUNTED_SYMBOLS_FILES: AtomicU32 = AtomicU32::new(0);
 
 struct MagicMount {
@@ -39,7 +40,7 @@ struct MagicMount {
 
 impl MagicMount {
     fn new<P>(
-        node: Node,
+        node: &Node,
         path: P,
         work_dir_path: P,
         has_tmpfs: bool,
@@ -51,14 +52,14 @@ impl MagicMount {
         Self {
             path: path.as_ref().join(&node.name),
             work_dir_path: work_dir_path.as_ref().join(&node.name),
-            node,
+            node: node.clone(),
             has_tmpfs,
             #[cfg(any(target_os = "linux", target_os = "android"))]
             umount,
         }
     }
 
-    fn do_mount(mut self) -> Result<()> {
+    fn do_mount(&mut self) -> Result<()> {
         match self.node.file_type {
             NodeFileType::Symlink => self.symlink(),
             NodeFileType::RegularFile => self.regular_file(),
@@ -157,6 +158,9 @@ impl MagicMount {
                             "cannot create tmpfs on {}, ignore: {name}",
                             self.path.display()
                         );
+                        let ignored_files =
+                            IGNORED_FILES.load(std::sync::atomic::Ordering::Relaxed) + 1;
+                        IGNORED_FILES.store(ignored_files, std::sync::atomic::Ordering::Relaxed);
                         node.skip = true;
                         continue;
                     }
@@ -195,8 +199,7 @@ impl MagicMount {
             log::debug!("dir {} is replaced", self.path.display());
         }
 
-        let remaining_children = std::mem::take(&mut self.node.children);
-        for (name, node) in remaining_children {
+        for (name, node) in &self.node.children {
             if node.skip {
                 continue;
             }
@@ -266,7 +269,7 @@ impl MagicMount {
                     }
 
                     Self::new(
-                        node,
+                        &node,
                         &self.path,
                         &self.work_dir_path,
                         has_tmpfs,
@@ -317,7 +320,7 @@ where
         mount_change(&tmp_dir, MountPropagationFlags::PRIVATE).context("make tmp private")?;
 
         let ret = MagicMount::new(
-            root,
+            &root,
             Path::new("/"),
             tmp_dir.as_path(),
             false,
@@ -333,7 +336,18 @@ where
 
         let mounted_symbols = MOUNTED_SYMBOLS_FILES.load(std::sync::atomic::Ordering::Relaxed);
         let mounted_files = MOUNTED_FILES.load(std::sync::atomic::Ordering::Relaxed);
-        log::info!("mounted files: {mounted_files}, mounted symlinks: {mounted_symbols}");
+        let ignored_files = IGNORED_FILES.load(std::sync::atomic::Ordering::Relaxed);
+        log::info!(
+            "mounted files: {mounted_files}, mounted symlinks: {mounted_symbols}, ignored files: {ignored_files}"
+        );
+
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        if let Err(e) =
+            crate::utils::update_desc(mounted_files, mounted_symbols, ignored_files, umount)
+        {
+            log::debug!("failed to update desc: {e}");
+        }
+
         ret
     } else {
         log::info!("no modules to mount, skipping!");

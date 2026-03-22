@@ -36,15 +36,20 @@ impl From<FileType> for NodeFileType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Node {
     pub name: String,
     pub file_type: NodeFileType,
     pub children: HashMap<String, Self>,
-    // the module that owned this node
     pub module_path: Option<PathBuf>,
     pub replace: bool,
     pub skip: bool,
+}
+
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.debug_tree(f, 0)
+    }
 }
 
 impl fmt::Display for Node {
@@ -57,6 +62,27 @@ impl fmt::Display for Node {
 }
 
 impl Node {
+    fn debug_tree(&self, f: &mut fmt::Formatter<'_>, indent: usize) -> fmt::Result {
+        let indent_str = "  ".repeat(indent);
+
+        write!(f, "{}{} ({:?})", indent_str, self.name, self.file_type)?;
+        if let Some(path) = &self.module_path {
+            write!(f, " [{}]", path.display())?;
+        }
+        if self.replace {
+            write!(f, " [R]")?;
+        }
+        if self.skip {
+            write!(f, " [S]")?;
+        }
+        writeln!(f)?;
+
+        for child in self.children.values() {
+            child.debug_tree(f, indent + 1)?;
+        }
+        Ok(())
+    }
+
     pub fn collect_module_files<P>(&mut self, module_dir: P) -> Result<bool>
     where
         P: AsRef<Path>,
