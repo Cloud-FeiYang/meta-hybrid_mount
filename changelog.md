@@ -1,4 +1,14 @@
-## v3.2.1
+## v3.2.2
+
+Changes since v3.2.1:
+* build: pin nightly toolchain for rustfmt consistency
+* chore(submodule): update webui [skip ci]
+* ci: restrict webui updater workflow to dev branch
+* fix: make cargo clippy happy
+* metainstall: add support for hot install
+* feat(core): auto detect manual mount scripts to prevent conflicts
+* chore: update license headers [skip ci]
+* chore(release): sync version v3.2.1 [skip ci]## v3.2.1
 
 Changes since v3.2.0:
 * chore: remove unused update_desc
