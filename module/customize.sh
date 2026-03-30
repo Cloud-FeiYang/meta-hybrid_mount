@@ -1,7 +1,10 @@
+<<<<<<< HEAD
 if [ -n "$KSU_LATE_LOAD" ]; then
   abort "! unsupported late load mode"
 fi
 
+=======
+>>>>>>> parent of 4c9b5e0 (feat: add late load check)
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -d "$MODPATH" >&2
 case "$ARCH" in
@@ -64,7 +67,7 @@ KEY_volume_detect() {
   done
   ui_print "- Configured mode: $chosen_mode"
   sed -i '/default_mode/d' "$BASE_DIR/config.toml"
-  echo "default_mode = \"$chosen_mode\"" >>"$BASE_DIR/config.toml"
+  echo "default_mode = \"$chosen_mode\"" >> "$BASE_DIR/config.toml"
 }
 
 if [ ! -f "$BASE_DIR/config.toml" ]; then
