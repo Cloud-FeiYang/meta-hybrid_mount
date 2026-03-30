@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-if [ -n "$KSU_LATE_LOAD" ]; then
-  abort "! unsupported late load mode"
-fi
-
-=======
->>>>>>> parent of 4c9b5e0 (feat: add late load check)
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -d "$MODPATH" >&2
 case "$ARCH" in
